@@ -5,19 +5,27 @@ import (
 	"go-td/src/conf"
 	_map "go-td/src/game/map"
 	"go-td/src/game/map/cell"
-	"go-td/src/game/tower"
+	"go-td/src/game/map/tower"
+	"go-td/src/game/ui"
 	"go-td/src/render"
+	"time"
 )
 
 type Game struct {
-	Map      *_map.Map
-	Renderer *sdl.Renderer
-	running  bool
+	Map       *_map.Map
+	UI        ui.Ui
+	Renderer  *sdl.Renderer
+	running   bool
+	DeltaTime time.Duration
 }
 
 func (g *Game) prepareMap() {
 	g.Map = &_map.Map{}
 	g.Map.New()
+	g.UI = ui.Ui{
+		Wave:  1,
+		Money: 100,
+	}
 }
 
 func (g *Game) Start() {
@@ -25,9 +33,11 @@ func (g *Game) Start() {
 	g.running = true
 	g.prepareMap()
 	g.Renderer = render.Create()
+	g.DeltaTime = time.Duration(16) * time.Millisecond
 	for g.running {
+		g.Update()
 		g.handleEvents()
-		render.Render(g.Renderer, g.Map)
+		render.Render(g.Renderer, g.Map, g.UI)
 		sdl.Delay(16)
 	}
 }
@@ -45,8 +55,14 @@ func (g *Game) handleEvents() {
 		case *sdl.MouseButtonEvent:
 			if e.Button == sdl.BUTTON_LEFT && e.State == sdl.PRESSED {
 				cord := cell.Cord{X: e.X / conf.GridSize, Y: e.Y / conf.GridSize}
-				g.Map.SetTower(cord, tower.CreateTower())
+				if g.Map.Cells[cord.X][cord.Y].Kind == 0 {
+					g.Map.SetTower(cord, tower.CreateTower())
+				}
 			}
 		}
 	}
+}
+
+func (g *Game) Update() {
+	g.Map.Update(g.DeltaTime)
 }
